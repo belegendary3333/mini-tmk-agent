@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>Mini-TMK 同传助手</title>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; max-width: 800px; margin: 40px auto; background: #f8f9fa; }
+        .card { background: white; padding: 30px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+        .tabs { border-bottom: 2px solid #eee; margin-bottom: 20px; display: flex; gap: 20px; }
+        .tab { padding: 10px 20px; cursor: pointer; color: #666; font-weight: bold; }
+        .tab.active { border-bottom: 2px solid #007bff; color: #007bff; }
+        .setting-row { margin-bottom: 15px; display: flex; align-items: center; gap: 10px; }
+        input, select, button { padding: 10px; border-radius: 6px; border: 1px solid #ddd; }
+        button { background: #007bff; color: white; border: none; cursor: pointer; min-width: 120px; }
+        #display-window { background: #1e1e1e; color: #fff; padding: 20px; border-radius: 8px; min-height: 200px; margin-top: 20px; overflow-y: auto; }
+        .entry { border-bottom: 1px solid #333; padding: 10px 0; }
+        .trans { color: #ce9178; font-weight: bold; margin-top: 5px; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <h2>🎧 Mini-TMK 同传翻译助手</h2>
+        
+        <div class="tabs">
+            <div id="tab-file" class="tab active" onclick="switchMode('file')">文件转录模式</div>
+            <div id="tab-stream" class="tab" onclick="switchMode('stream')">流式同传模式</div>
+        </div>
+
+        <div class="setting-row">
+            <span>目标语言：</span>
+            <select id="target-lang">
+                <option value="English">英语 (English)</option>
+                <option value="Japanese">日语 (Japanese)</option>
+                <option value="Korean">韩语 (Korean)</option>
+            </select>
+        </div>
+
+        <div id="file-settings" class="setting-row">
+            <span>音频文件：</span>
+            <input type="text" id="file-name" value="test.wav" placeholder="输入文件名">
+        </div>
+        <div id="stream-settings" class="setting-row" style="display: none;">
+            <span style="color: #666;">点击下方按钮将开启 3 秒麦克风录音</span>
+        </div>
+
+        <button id="main-btn" onclick="handleAction()">开始翻译 test.wav</button>
+
+        <div id="display-window">等待指令...</div>
+    </div>
+
+    <script>
+        let currentMode = 'file';
+
+        function switchMode(mode) {
+            currentMode = mode;
+            document.getElementById('tab-file').className = mode === 'file' ? 'tab active' : 'tab';
+            document.getElementById('tab-stream').className = mode === 'stream' ? 'tab active' : 'tab';
+            
+            document.getElementById('file-settings').style.display = mode === 'file' ? 'flex' : 'none';
+            document.getElementById('stream-settings').style.display = mode === 'stream' ? 'flex' : 'none';
+            
+            const fileName = document.getElementById('file-name').value;
+            document.getElementById('main-btn').innerText = mode === 'file' ? `开始翻译 ${fileName}` : "开启麦克风录音";
+        }
+
+        async function handleAction() {
+            const target = document.getElementById('target-lang').value;
+            const fileName = document.getElementById('file-name').value;
+            const display = document.getElementById('display-window');
+            
+            display.innerHTML = currentMode === 'file' ? `正在分析文件 ${fileName}...` : "正在监听麦克风...";
+
+            try {
+                // 核心：根据 currentMode 传递不同的参数
+                const url = `/api/translate?mode=${currentMode}&file=${fileName}&target=${target}`;
+                const res = await fetch(url);
+                const data = await res.json();
+                
+                if (data.error) throw new Error(data.error);
+                
+                const newEntry = `
+                    <div class="entry">
+                        <div style="color: #888; font-size: 0.8em;">[${currentMode.toUpperCase()}]</div>
+                        <div>原文: ${data.original}</div>
+                        <div class="trans">结果: ${data.translated}</div>
+                    </div>`;
+                display.innerHTML = newEntry + display.innerHTML;
+            } catch (e) {
+                display.innerHTML = `<span style="color:red">错误: ${e.message}</span>` + display.innerHTML;
+            }
+        }
+    </script>
+</body>
+</html>
